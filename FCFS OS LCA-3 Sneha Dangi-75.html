@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>FCFS CPU Scheduling Algorithm Simulation</title>
+<style>
+  /* Reset & base */
+  * {
+    box-sizing: border-box;
+  }
+  body, html {
+    margin: 0; padding: 0; height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #050722; /* dark navy */
+    color: #eee;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+  }
+  a {
+    color: #3af;
+  }
+
+  /* Layout containers */
+  #container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  header h1 {
+    margin: 0;
+    font-weight: 700;
+    font-size: 2.2rem;
+    color: #00ffba;
+    letter-spacing: 1.5px;
+  }
+  header p.subtitle {
+    margin-top: 0.2rem;
+    font-weight: 400;
+    font-size: 1.1rem;
+    color: #66ffa8;
+  }
+
+  /* Toolbar container */
+  #toolbar {
+    background-color: #111628;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    justify-content: center;
+  }
+  #toolbar button, #toolbar select {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #191817;
+    background: linear-gradient(135deg, #00ffba 0%, #03a270 80%);
+    box-shadow: 0 0 7px #00ffbaaa;
+    transition: background 0.3s ease;
+  }
+  #toolbar button:hover, #toolbar select:hover {
+    background: linear-gradient(135deg, #00e6a4 0%, #03825d 80%);
+  }
+  #toolbar button:disabled {
+    background: #333;
+    color: #777;
+    cursor: default;
+    box-shadow: none;
+  }
+  #sim-clock {
+    color: #fff;
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    min-width: 5rem;
+    text-align: center;
+    padding: 0.4rem 0.8rem;
+    background: #1a1f34;
+    border-radius: 6px;
+    user-select: none;
+  }
+  #scenario-selector {
+    min-width: 150px;
+    color: #191817;
+  }
+
+  /* Main content flex layout */
+  #main {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  section.simulation, section.info-panel {
+    background-color: #111628;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 0 15px #00663355 inset;
+    color: #cbd4e8;
+  }
+  section.simulation {
+    flex: 1 1 600px;
+    min-width: 320px;
+    max-width: 740px;
+  }
+  section.info-panel {
+    flex: 1 1 380px;
+    min-width: 320px;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    height: 850px;
+    overflow-y: auto;
+  }
+
+  /* Simulation sections */
+  #arrival-visualization {
+    height: 80px;
+    margin-bottom: 15px;
+    position: relative;
+    user-select: none;
+  }
+  .process-circle {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    position: absolute;
+    top: 20px;
+    color: #111;
+    font-weight: 700;
+    font-size: 1.1rem;
+    line-height: 40px;
+    text-align: center;
+    cursor: default;
+    box-shadow: 0 0 10px #000;
+    user-select: none;
+    transition: transform 0.3s ease, left 0.4s ease;
+  }
+  .procA { background-color: #00ffba; box-shadow: 0 0 12px #00ffbaaa; }
+  .procB { background-color: #2d92ff; box-shadow: 0 0 12px #2d92ffaa; }
+  .procC { background-color: #ffae00; box-shadow: 0 0 12px #ffae00aa; }
+
+  /* Ready queue container */
+  #ready-queue {
+    background: #222b44;
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-height: 70px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    overflow-x: auto;
+    box-shadow: inset 0 0 15px #000a;
+  }
+  #ready-queue .process-circle {
+    position: relative;
+    top: 0;
+    cursor: default;
+    box-shadow: none;
+    filter: brightness(1);
+    transition: filter 0.3s ease;
+  }
+  #ready-queue .running {
+    border: 3px solid #fff;
+    filter: drop-shadow(0 0 3px #fff);
+  }
+  #ready-queue .waiting {
+    filter: brightness(0.7);
+  }
+  
+  /* CPU block */
+  #cpu-container {
+    background-color: #172230;
+    border: 2px solid #005522;
+    border-radius: 14px;
+    height: 100px;
+    margin-top: 20px;
+    margin-bottom: 15px;
+    position: relative;
+    color: #99ffa5;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    box-shadow:
+      inset 0 0 15px #00ffba99,
+      0 0 12px #009900cc;
+  }
+  #cpu-container.idle {
+    color: #666;
+    box-shadow:
+      inset 0 0 7px #444,
+      0 0 6px #222;
+  }
+  #cpu-process {
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 900;
+    line-height: 1;
+    user-select: none;
+  }
+  #cpu-process.procA {
+    background-color: #00ffba;
+    color: #002210;
+    box-shadow: 0 0 15px #00ffbaaa;
+  }
+  #cpu-process.procB {
+    background-color: #2d92ff;
+    color: #001a3f;
+    box-shadow: 0 0 15px #2d92ffaa;
+  }
+  #cpu-process.procC {
+    background-color: #ffae00;
+    color: #402a00;
+    box-shadow: 0 0 15px #ffae00aa;
+  }
+  #cpu-status {
+    position: absolute;
+    right: 15px;
+    bottom: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #88ff88;
+    user-select: none;
+  }
+  #cpu-status.idle {
+    color: #888;
+  }
+
+  /* Process status table */
+  table#process-status {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 0.90rem;
+  }
+  table#process-status thead tr {
+    background-color: #192939;
+  }
+  table#process-status th,
+  table#process-status td {
+    border: 1px solid #2f3b52;
+    padding: 6px 8px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  table#process-status th {
+    font-weight: 700;
+    color: #66ffa8;
+    letter-spacing: 0.03em;
+  }
+  table#process-status tbody tr:nth-child(odd) {
+    background: #121f37;
+  }
+  table#process-status tbody tr:nth-child(even) {
+    background: #182a3e;
+  }
+  .status-arrived {
+    color: #00eda0;
+    font-weight: 700;
+  }
+  .status-ready {
+    color: #66b3ff;
+    font-weight: 700;
+  }
+  .status-running {
+    color: #ffb400;
+    font-weight: 700;
+  }
+  .status-completed {
+    color: #ff4c4c;
+    font-weight: 700;
+  }
+
+  /* Gantt chart container */
+  #gantt-container {
+    margin-top: 20px;
+    background-color: #121f37;
+    border-radius: 10px;
+    box-shadow: inset 0 0 12px #005500aa;
+    overflow-x: auto;
+    padding: 12px 8px 30px 8px;
+    user-select: none;
+  }
+  #gantt-chart {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 50px;
+    position: relative;
+    min-width: 320px;
+  }
+  .gantt-block {
+    flex-grow: 1;
+    height: 40px;
+    border-radius: 6px;
+    margin: 0 3px;
+    font-weight: 700;
+    color: #111;
+    line-height: 40px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 0 6px #000;
+    user-select: none;
+    transition: box-shadow 0.3s ease;
+  }
+  .gantt-block.procA {
+    background-color: #00ffba;
+    box-shadow: 0 0 15px #00ffbaaa;
+  }
+  .gantt-block.procB {
+    background-color: #2d92ff;
+    box-shadow: 0 0 15px #2d92ffaa;
+  }
+  .gantt-block.procC {
+    background-color: #ffae00;
+    box-shadow: 0 0 15px #ffae00aa;
+  }
+  .gantt-block.current {
+    box-shadow: 0 0 23px 3px #fff;
+  }
+  #time-markers {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #88ff88;
+    user-select: none;
+  }
+
+  /* Industrial Application Panel */
+  #industrial-app {
+    margin-top: 25px;
+    background-color: #111f20;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: inset 0 0 20px #006644aa;
+    user-select: none;
+  }
+  #factory-scene {
+    position: relative;
+    height: 220px;
+    background: linear-gradient(180deg, #082d1f 40%, #0b251f 100%);
+    border: 2px solid #004422;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow:
+      inset 0 10px 20px #00770d66,
+      0 0 12px #00aa11cc;
+    overflow: hidden;
+  }
+  /* Factory building */
+  #factory-building {
+    position: absolute;
+    left: 20px;
+    bottom: 0;
+    width: 240px;
+    height: 180px;
+    background: linear-gradient(90deg, #004422 0%, #006633 100%);
+    border-radius: 12px 12px 0 0;
+    box-shadow: inset 6px 0 12px #003300cc;
+  }
+  #factory-building:before {
+    content: '';
+    position: absolute;
+    top: 3px; left: 15px;
+    width: 8px; height: 8px;
+    background: #88ff88;
+    border-radius: 50%;
+    box-shadow:
+      12px 0 #88ff88,
+      24px 0 #88ff88,
+      36px 0 #88ff88;
+  }
+  /* Production workstation */
+  #workstation {
+    position: absolute;
+    right: 30px;
+    bottom: 50px;
+    width: 130px;
+    height: 90px;
+    background: linear-gradient(180deg, #003300 0%, #006600 100%);
+    border-radius: 12px;
+    box-shadow: inset 0 0 15px #00cc0099;
+  }
+  #workstation:before {
+    content: 'Workstation';
+    position: absolute;
+    top: -22px;
+    left: 5px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #94ff96;
+    user-select: none;
+  }
+  /* Production queue */
+  #production-queue {
+    position: absolute;
+    left: 270px;
+    bottom: 60px;
+    width: 200px;
+    height: 45px;
+    background-color: #114422bb;
+    border-radius: 12px;
+    box-shadow:
+      inset 0 0 12px #00cc0077;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 12px;
+    overflow-x: auto;
+  }
+  /* Completed products */
+  #completed-section {
+    position: absolute;
+    right: 30px;
+    bottom: 5px;
+    width: 150px;
+    height: 40px;
+    background-color: #112211dd;
+    border-radius: 12px;
+    box-shadow: inset 0 0 16px #3aff3fbb;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-left: 12px;
+    color: #3aff3f;
+    font-weight: 700;
+    font-size: 0.95rem;
+    user-select: none;
+  }
+  #completed-section .prod-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    box-shadow: 0 0 10px #33cc33ff;
+  }
+
+  /* Product/order circles for factory */
+  #production-queue .prod-A,
+  #completed-section .prod-A {
+    background-color: #00ffba;
+  }
+  #production-queue .prod-B,
+  #completed-section .prod-B {
+    background-color: #2d92ff;
+  }
+  #production-queue .prod-C,
+  #completed-section .prod-C {
+    background-color: #ffae00;
+  }
+
+  /* Moving animation for products */
+  .product-moving {
+    animation: moveForward 1s forwards;
+  }
+  /* subtle factory steam */
+  #steam {
+    position: absolute;
+    top: 10px;
+    left: 90px;
+    width: 40px;
+    height: 90px;
+    pointer-events: none;
+    user-select: none;
+  }
+  .steam-puff {
+    position: absolute;
+    bottom: 0;
+    width: 22px;
+    height: 22px;
+    background: radial-gradient(circle at center, #b0eeb0bb, transparent 80%);
+    border-radius: 50%;
+    opacity: 0;
+  }
+  .steam-puff:nth-child(1) {
+    left: 3px;
+    animation: puffRise 3.2s infinite ease-in-out;
+    animation-delay: 0s;
+  }
+  .steam-puff:nth-child(2) {
+    left: 15px;
+    width: 18px; height: 18px;
+    animation: puffRise 3.5s infinite ease-in-out;
+    animation-delay: 1.2s;
+  }
+  .steam-puff:nth-child(3) {
+    left: 8px;
+    width: 25px; height: 25px;
+    animation: puffRise 4s infinite ease-in-out;
+    animation-delay: 2.1s;
+  }
+
+  /* Tabs inside info-panel */
+  .tabs {
+    display: flex;
+    border-bottom: 1.5px solid #004422aa;
+    margin-bottom: 8px;
+  }
+  .tab-button {
+    flex-grow: 1;
+    padding: 0.6rem 0.5rem;
+    background-color: #0a1d15;
+    border: none;
+    color: #66ffaa;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+    border-radius: 8px 8px 0 0;
+    margin-right: 7px;
+  }
+  .tab-button:last-child {
+    margin-right: 0;
+  }
+  .tab-button.active {
+    background-color: #009933;
+    box-shadow: 0 3px 10px #00cc0099;
+    color: #0f1306;
+    font-weight: 700;
+  }
+  .tab-content {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding-right: 12px;
+    line-height: 1.5;
+    font-size: 0.9rem;
+    color: #b6d4aa;
+  }
+  .tab-content h3 {
+    color: #66ff99;
+    margin-top: 0;
+  }
+  .tab-content ul {
+    padding-left: 1.3rem;
+  }
+  .tab-content ul li {
+    margin-bottom: 8px;
+  }
+  .highlight-green {
+    color: #66ffcc;
+    font-weight: 700;
+  }
+  .highlight-amber {
+    color: #ffcc33;
+    font-weight: 700;
+  }
+  .highlight-red {
+    color: #ff6b6b;
+    font-weight: 700;
+  }
+
+  /* Animations */
+  @keyframes puffRise {
+    0% {
+      opacity: 0;
+      transform: translateY(0) scale(0.4);
+    }
+    20% {
+      opacity: 1;
+      transform: translateY(-10px) scale(1);
+    }
+    70% {
+      opacity: 0.2;
+      transform: translateY(-50px) scale(1.2);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-70px) scale(1.3);
+    }
+  }
+  @keyframes moveForward {
+    0% {transform: translateX(0);}
+    100% {transform: translateX(100%);}
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 900px) {
+    #main {
+      flex-direction: column;
+      align-items: center;
+    }
+    section.simulation, section.info-panel {
+      max-width: 100%;
+      width: 100%;
+      height: auto !important;
+    }
+    #toolbar {
+      justify-content: space-around;
+    }
+    #industrial-app {
+      margin-top: 15px;
+    }
+  }
+
+</style>
+</head>
+<body>
+  <div id="container">
+    <header>
+      <h1>FCFS CPU Scheduling Algorithm Simulation</h1>
+      <p class="subtitle">Understand how the First Come, First Served algorithm allocates CPU time to processes according to their arrival order.</p>
+    </header>
+
+    <div id="toolbar" aria-label="Simulation controls">
+      <button type="button" id="btn-start" aria-label="Start simulation">Start</button>
+      <button type="button" id="btn-pause" aria-label="Pause simulation" disabled>Pause</button>
+      <button type="button" id="btn-resume" aria-label="Resume simulation" disabled>Resume</button>
+      <button type="button" id="btn-step" aria-label="Step simulation one time unit" disabled>Step</button>
+      <button type="button" id="btn-back" aria-label="Go back one time unit" disabled>Back</button>
+      <button type="button" id="btn-reset" aria-label="Reset simulation" disabled>Reset</button>
+      <button type="button" id="btn-replay" aria-label="Replay simulation" disabled>Replay</button>
+      <select id="speed-selector" aria-label="Animation speed selector">
+        <option value="slow">Slow</option>
+        <option value="normal" selected>Normal</option>
+        <option value="fast">Fast</option>
+      </select>
+      <div id="sim-clock" aria-live="polite" aria-atomic="true" aria-label="Simulation clock">Time: 0</div>
+      <select id="scenario-selector" aria-label="Scenario selector" hidden>
+        <option value="default" selected>Default Scenario</option>
+      </select>
+    </div>
+
+    <div id="main">
+      <section class="simulation" aria-label="Simulation visualization and controls">
+        <div>
+          <strong>Process Arrival:</strong>
+          <div id="arrival-visualization" aria-live="polite" aria-atomic="true" aria-label="Process arrival queue"></div>
+        </div>
+        <div>
+          <strong>Ready Queue:</strong>
+          <div id="ready-queue" aria-live="polite" aria-atomic="true" aria-label="Ready queue of processes"></div>
+        </div>
+        <div id="cpu-container" aria-live="polite" aria-atomic="true" aria-label="CPU processor status" tabindex="0">
+          <div id="cpu-process" aria-label="Current CPU process"></div>
+          <div id="cpu-status" aria-label="CPU status"></div>
+        </div>
+
+        <div>
+          <table id="process-status" aria-label="Process status table" role="grid">
+            <thead>
+              <tr>
+                <th scope="col">Process</th>
+                <th scope="col">Arrival Time</th>
+                <th scope="col">Burst Time</th>
+                <th scope="col">Completion Time</th>
+                <th scope="col">Waiting Time</th>
+                <th scope="col">Turnaround Time</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody id="process-status-body"></tbody>
+          </table>
+        </div>
+
+        <div id="gantt-container" aria-label="Gantt chart visualization">
+          <div id="gantt-chart"></div>
+          <div id="time-markers"></div>
+        </div>
+
+        <div id="calculations" style="margin-top:20px; font-size: 1rem; font-weight: 700; color: #99ffbb;"></div>
+
+        <section id="industrial-app" aria-label="Industrial application demonstration">
+          <h3 style="color:#00cc44; margin-top: 0; margin-bottom: 10px; user-select:none;">Industrial Application: Manufacturing Production Line</h3>
+          <div id="factory-scene" aria-label="Factory production line animation">
+            <div id="factory-building" aria-hidden="true"></div>
+            <div id="production-queue" aria-label="Production queue"></div>
+            <div id="workstation" aria-label="Manufacturing workstation"></div>
+            <div id="completed-section" aria-label="Completed products"></div>
+            <div id="steam" aria-hidden="true">
+              <div class="steam-puff"></div>
+              <div class="steam-puff"></div>
+              <div class="steam-puff"></div>
+            </div>
+          </div>
+          <p style="color:#a9d8a6; font-size: 0.9rem; user-select:none; max-width: 440px;">
+            <em>
+              FCFS can be used in production systems where jobs are processed in the order they are received. This helps maintain a simple and predictable queue.<br><br>
+              <strong>Note:</strong> This is an illustrative application of the FCFS principle, not a claim that every factory uses FCFS for all production scheduling.
+            </em>
+          </p>
+        </section>
+      </section>
+
+      <section class="info-panel" aria-label="Educational information panels">
+        <nav class="tabs" role="tablist" aria-label="Educational topics tabs">
+          <button id="tab-intro" class="tab-button active" role="tab" aria-selected="true" aria-controls="content-intro" tabindex="0">Introduction</button>
+          <button id="tab-how" class="tab-button" role="tab" aria-selected="false" aria-controls="content-how" tabindex="-1">How It Works</button>
+          <button id="tab-example" class="tab-button" role="tab" aria-selected="false" aria-controls="content-example" tabindex="-1">Example</button>
+          <button id="tab-calc" class="tab-button" role="tab" aria-selected="false" aria-controls="content-calc" tabindex="-1">Calculations</button>
+          <button id="tab-industrial" class="tab-button" role="tab" aria-selected="false" aria-controls="content-industrial" tabindex="-1">Industrial Application</button>
+          <button id="tab-adv-lim" class="tab-button" role="tab" aria-selected="false" aria-controls="content-adv-lim" tabindex="-1">Advantages and Limitations</button>
+        </nav>
+        <div tabindex="0" id="content-intro" class="tab-content" role="tabpanel" aria-labelledby="tab-intro">
+          <h3>Introduction</h3>
+          <p>
+            The First Come, First Served (FCFS) scheduling algorithm is one of the simplest CPU scheduling methods. Processes are served in the order they arrive in the ready queue, without preemption.
+          </p>
+          <p>
+            In FCFS, once a process starts executing, it runs to completion before the next process begins. This algorithm is fair in terms of arrival time but can lead to long waiting times for shorter processes behind long ones.
+          </p>
+        </div>
+        <div tabindex="0" id="content-how" class="tab-content" role="tabpanel" aria-labelledby="tab-how" hidden>
+          <h3>How It Works</h3>
+          <p>
+            Processes arrive at different times and enter the ready queue. The CPU picks the first arrived process and runs it until it finishes.
+            Other processes wait in the queue in arrival order. New arrivals cannot interrupt the running process, making FCFS non-preemptive.
+          </p>
+          <p>
+            The sequence is:
+            <ul>
+              <li>Process arrives → enters ready queue</li>
+              <li>Process at front of queue runs in CPU until done</li>
+              <li>Next process moves forward for execution</li>
+              <li>Completed processes leave the system</li>
+            </ul>
+          </p>
+        </div>
+        <div tabindex="0" id="content-example" class="tab-content" role="tabpanel" aria-labelledby="tab-example" hidden>
+          <h3>Example</h3>
+          <p>The simulation uses three processes:</p>
+          <table style="width: 100%; border-collapse: collapse; color:#66ffa8;">
+            <thead>
+              <tr>
+                <th style="border-bottom:1px solid #0c4d31;">Process</th>
+                <th style="border-bottom:1px solid #0c4d31;">Arrival Time (AT)</th>
+                <th style="border-bottom:1px solid #0c4d31;">Burst Time (BT)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>A</td><td>0</td><td>4</td></tr>
+              <tr><td>B</td><td>1</td><td>3</td></tr>
+              <tr><td>C</td><td>2</td><td>2</td></tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>Key points:</strong><br>
+            - <em>Arrival Time</em> is when a process enters the queue.<br>
+            - <em>Burst Time</em> is CPU time required.<br>
+            - FCFS executes processes strictly in arrival order.<br>
+            - It is <em>non-preemptive</em>, no interruption once running.
+          </p>
+        </div>
+        <div tabindex="0" id="content-calc" class="tab-content" role="tabpanel" aria-labelledby="tab-calc" hidden>
+          <h3>Calculations</h3>
+          <p>
+            <strong>Completion Time (CT):</strong> Time at which process finishes.<br>
+            <strong>Turnaround Time (TAT):</strong> TAT = CT − AT.<br>
+            <strong>Waiting Time (WT):</strong> WT = TAT − BT.<br>
+          </p>
+          <p>From the simulation results:</p>
+          <table style="width: 100%; border-collapse: collapse; color:#66ffa8;">
+            <thead>
+              <tr>
+                <th style="border-bottom:1px solid #0c4d31;">Process</th>
+                <th style="border-bottom:1px solid #0c4d31;">CT</th>
+                <th style="border-bottom:1px solid #0c4d31;">TAT</th>
+                <th style="border-bottom:1px solid #0c4d31;">WT</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>A</td><td>4</td><td>4</td><td>0</td></tr>
+              <tr><td>B</td><td>7</td><td>6</td><td>3</td></tr>
+              <tr><td>C</td><td>9</td><td>7</td><td>5</td></tr>
+            </tbody>
+          </table>
+          <p>
+            Average Waiting Time = (0 + 3 + 5) / 3 = <span class="highlight-green">2.67 time units</span><br>
+            Average Turnaround Time = (4 + 6 + 7) / 3 = <span class="highlight-green">5.67 time units</span>
+          </p>
+        </div>
+        <div tabindex="0" id="content-industrial" class="tab-content" role="tabpanel" aria-labelledby="tab-industrial" hidden>
+          <h3>Industrial Application</h3>
+          <p>
+            FCFS scheduling is applied in manufacturing production lines where workstations process jobs/orders in the order they arrive.
+          </p>
+          <p>
+            In the example shown, three production orders arrive at different times and are processed without interruption in their arrival sequence.
+            This simple approach ensures predictability and respects first-come order.
+          </p>
+        </div>
+        <div tabindex="0" id="content-adv-lim" class="tab-content" role="tabpanel" aria-labelledby="tab-adv-lim" hidden>
+          <h3>Advantages and Limitations</h3>
+          <strong>Advantages:</strong>
+          <ul>
+            <li>Simple and easy to implement.</li>
+            <li>Processes execute strictly in arrival order.</li>
+            <li>Fair based on arrival time, no starvation by priority.</li>
+          </ul>
+          <strong>Limitations:</strong>
+          <ul>
+            <li>Long processes delay shorter ones, leading to high waiting times.</li>
+            <li>Non-preemptive nature unsuitable for real-time or interactive tasks.</li>
+            <li>Average waiting time may be high, reducing responsiveness.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* === Process Definition === */
+  class Process {
+    constructor(id, arrivalTime, burstTime) {
+      this.id = id;           // 'A', 'B', 'C'
+      this.arrivalTime = arrivalTime; // integer
+      this.burstTime = burstTime;     // integer
+      this.completionTime = null;     // to be computed
+      this.turnaroundTime = null;     // CT - AT
+      this.waitingTime = null;        // TAT - BT
+      this.status = 'Not Arrived';    // 'Not Arrived', 'Arrived', 'Ready', 'Running', 'Completed'
+      this.remainingTime = burstTime; // For future extensibility, not used here since non-preemptive
+    }
+  }
+
+  /* === Simulation State and Logic === */
+  class Simulation {
+    constructor() {
+      this.processes = [
+        new Process('A', 0, 4),
+        new Process('B', 1, 3),
+        new Process('C', 2, 2)
+      ];
+
+      // To keep order stable
+      this.processes.sort((p1, p2) => p1.arrivalTime - p2.arrivalTime || p1.id.charCodeAt(0) - p2.id.charCodeAt(0));
+
+      this.time = 0;             // simulation time
+      this.maxTime = 100;        // safety cap
+      this.currentProcess = null; // Process running on CPU
+      this.readyQueue = [];
+      this.completedProcesses = [];
+      this.isRunning = false;
+
+      // Speed configs (milliseconds per time unit)
+      this.speedMap = {
+        slow: 1400,
+        normal: 900,
+        fast: 400
+      };
+
+      this.speed = this.speedMap.normal;
+      this.animationFrameID = null;
+      this.timerID = null;
+
+      this.stateHistory = [];     // To support back and step, history of states
+      this.historyPointer = -1;   // points to last executed state
+
+      this.lastStepTime = 0;      // last executed timestamp for fps timing
+
+      // Callbacks to update UI
+      this.onStateChange = () => {};
+      this.onSimulationEnd = () => {};
+
+      // Industrial orders mirror same data & logic
+      this.orders = [
+        { id:'A', arrivalTime:0, units:4 },
+        { id:'B', arrivalTime:1, units:3 },
+        { id:'C', arrivalTime:2, units:2 }
+      ];
+      this.industrialState = {
+        time: 0,
+        queue: [],
+        currentOrder: null,
+        doneOrders: []
+      };
+    }
+
+    reset() {
+      this.time = 0;
+      this.currentProcess = null;
+      this.readyQueue = [];
+      this.completedProcesses = [];
+      this.isRunning = false;
+      this.stateHistory = [];
+      this.historyPointer = -1;
+      this.processes.forEach(p => {
+        p.completionTime = null;
+        p.turnaroundTime = null;
+        p.waitingTime = null;
+        p.status = 'Not Arrived';
+        p.remainingTime = p.burstTime;
+      });
+      // Industrial reset:
+      this.industrialState.time = 0;
+      this.industrialState.queue = [];
+      this.industrialState.currentOrder = null;
+      this.industrialState.doneOrders = [];
+    }
+
+    /* Take a snapshot of current state for history */
+    snapshotState() {
+      // Deep clone relevant pieces
+      const procClones = this.processes.map(p => ({
+        id: p.id,
+        arrivalTime: p.arrivalTime,
+        burstTime: p.burstTime,
+        completionTime: p.completionTime,
+        turnaroundTime: p.turnaroundTime,
+        waitingTime: p.waitingTime,
+        status: p.status,
+        remainingTime: p.remainingTime
+      }));
+      const industrialClone = {
+        time: this.industrialState.time,
+        queue: this.industrialState.queue.map(o => ({...o})),
+        currentOrder: this.industrialState.currentOrder ? {...this.industrialState.currentOrder} : null,
+        doneOrders: this.industrialState.doneOrders.map(o => ({...o}))
+      };
+      return {
+        time: this.time,
+        currentProcessId: this.currentProcess ? this.currentProcess.id : null,
+        readyQueueIds: this.readyQueue.map(p => p.id),
+        completedProcessIds: this.completedProcesses.map(p => p.id),
+        processes: procClones,
+        industrialState: industrialClone
+      };
+    }
+
+    /* Restore simulation state from snapshot (for back/step) */
+    restoreState(state) {
+      this.time = state.time;
+      this.processes.forEach(p => {
+        const saved = state.processes.find(sp => sp.id === p.id);
+        if (saved) {
+          p.status = saved.status;
+          p.completionTime = saved.completionTime;
+          p.turnaroundTime = saved.turnaroundTime;
+          p.waitingTime = saved.waitingTime;
+          p.remainingTime = saved.remainingTime;
+        }
+      });
+      this.currentProcess = this.processes.find(p => p.id === state.currentProcessId) || null;
+      this.readyQueue = [];
+      for (const id of state.readyQueueIds) {
+        const p = this.processes.find(pp => pp.id === id);
+        if(p) this.readyQueue.push(p);
+      }
+      this.completedProcesses = [];
+      for (const id of state.completedProcessIds) {
+        const p = this.processes.find(pp => pp.id === id);
+        if(p) this.completedProcesses.push(p);
+      }
+
+      // Industrial
+      this.industrialState.time = state.industrialState.time;
+      this.industrialState.queue = state.industrialState.queue;
+      this.industrialState.currentOrder = state.industrialState.currentOrder;
+      this.industrialState.doneOrders = state.industrialState.doneOrders;
+    }
+
+    /* Schedule next process if CPU is idle */
+    schedule() {
+      if (this.currentProcess === null) {
+        if (this.readyQueue.length > 0) {
+          // Pick first in ready queue (FCFS)
+          this.currentProcess = this.readyQueue.shift();
+          this.currentProcess.status = 'Running';
+
+          // Also industrial
+          if (!this.industrialState.currentOrder && this.industrialState.queue.length > 0) {
+            this.industrialState.currentOrder = this.industrialState.queue.shift();
+          }
+        }
+      }
+    }
+
+    /* Advance simulation by one time unit (step) */
+    stepForward() {
+      if (this.time > this.maxTime) {
+        this.isRunning = false;
+        return;
+      }
+
+      // 1. Check arrival for processes at this time
+      for (const p of this.processes) {
+        if (p.status === 'Not Arrived' && p.arrivalTime === this.time) {
+          p.status = 'Arrived';
+          // Move to ready queue immediately after arrival
+          p.status = 'Ready';
+          this.readyQueue.push(p);
+          // Sort ready queue by arrival time then id (though arrival guaranteed)
+          this.readyQueue.sort((a,b) => a.arrivalTime - b.arrivalTime || a.id.charCodeAt(0) - b.id.charCodeAt(0));
+
+          // Industrial orders arrival
+          for (const order of this.orders) {
+            if (order.arrivalTime === this.time) {
+              this.industrialState.queue.push({...order});
+            }
+          }
+          // Sort industrial queue by arrival time/id
+          this.industrialState.queue.sort((a,b) => a.arrivalTime - b.arrivalTime || a.id.charCodeAt(0) - b.id.charCodeAt(0));
+        }
+      }
+
+      // 2. Schedule if needed
+      this.schedule();
+
+      // 3. Run current process one time unit if any
+      if (this.currentProcess) {
+        this.currentProcess.remainingTime--;
+        // Industrial tracking
+        if (this.industrialState.currentOrder) {
+          this.industrialState.currentOrder.units--;
+        }
+        if (this.currentProcess.remainingTime === 0) {
+          // Process finished
+          this.currentProcess.completionTime = this.time + 1;
+          this.currentProcess.turnaroundTime = this.currentProcess.completionTime - this.currentProcess.arrivalTime;
+          this.currentProcess.waitingTime = this.currentProcess.turnaroundTime - this.currentProcess.burstTime;
+          this.currentProcess.status = 'Completed';
+          this.completedProcesses.push(this.currentProcess);
+          this.currentProcess = null;
+          // Industrial
+          if (this.industrialState.currentOrder && this.industrialState.currentOrder.units === 0) {
+            this.industrialState.doneOrders.push(this.industrialState.currentOrder);
+            this.industrialState.currentOrder = null;
+          }
+        }
+      }
+
+      // 4. Update waiting status for processes in ready queue
+      for (const p of this.readyQueue) {
+        if (p.status === 'Ready') {
+          p.status = 'Ready';
+        }
+      }
+
+      // 5. Save state to history only if running
+      if (this.isRunning) {
+        this.stateHistory = this.stateHistory.slice(0, this.historyPointer + 1);
+        this.stateHistory.push(this.snapshotState());
+        this.historyPointer++;
+      }
+
+      // 6. Increment time
+      this.time++;
+
+      return true;
+    }
+
+    /* Step backward in simulation */
+    stepBack() {
+      if (this.historyPointer <= 0) return false;
+      this.historyPointer--;
+      const prevState = this.stateHistory[this.historyPointer];
+      if (prevState) {
+        this.restoreState(prevState);
+        return true;
+      }
+      return false;
+    }
+
+    /* Start simulation run */
+    start() {
+      if (this.isRunning) return;
+      this.isRunning = true;
+      this.stepForward(); // initial step to time 0 processes arrival
+      this.loop();
+    }
+
+    /* Pause simulation run */
+    pause() {
+      this.isRunning = false;
+      if (this.animationFrameID) {
+        cancelAnimationFrame(this.animationFrameID);
+      }
+      if (this.timerID) {
+        clearTimeout(this.timerID);
+      }
+    }
+
+    /* Resume simulation run */
+    resume() {
+      if (this.isRunning) return;
+      this.isRunning = true;
+      this.loop();
+    }
+
+    /* Replay simulation */
+    replay() {
+      this.pause();
+      this.reset();
+      this.isRunning = true;
+      this.stepForward(); // initial step for time 0
+      this.loop();
+    }
+
+    /* Reset simulation */
+    resetSimulation() {
+      this.pause();
+      this.reset();
+      this.historyPointer = -1;
+      this.stateHistory = [];
+      this.onStateChange(this);
+    }
+
+    /* Run loop with requestAnimationFrame & timer sync */
+    loop() {
+      if (!this.isRunning) return;
+
+      const step = () => {
+        if (!this.isRunning) return;
+        // Advance one step
+        const canContinue = this.stepForward();
+        this.onStateChange(this);
+
+        if (canContinue && this.completedProcesses.length < this.processes.length) {
+          this.timerID = setTimeout(() => requestAnimationFrame(step), this.speed);
+        } else {
+          // Simulation has ended
+          this.isRunning = false;
+          this.onSimulationEnd?.();
+        }
+      };
+      requestAnimationFrame(step);
+    }
+  }
+
+  /* === DOM Elements Cache === */
+  const btnStart = document.getElementById('btn-start');
+  const btnPause = document.getElementById('btn-pause');
+  const btnResume = document.getElementById('btn-resume');
+  const btnStep = document.getElementById('btn-step');
+  const btnBack = document.getElementById('btn-back');
+  const btnReset = document.getElementById('btn-reset');
+  const btnReplay = document.getElementById('btn-replay');
+  const speedSelector = document.getElementById('speed-selector');
+  const simClock = document.getElementById('sim-clock');
+
+  // Visual containers
+  const arrivalContainer = document.getElementById('arrival-visualization');
+  const readyQueueContainer = document.getElementById('ready-queue');
+  const cpuContainer = document.getElementById('cpu-container');
+  const cpuProcessDiv = document.getElementById('cpu-process');
+  const cpuStatusDiv = document.getElementById('cpu-status');
+  const processTableBody = document.getElementById('process-status-body');
+  const ganttChart = document.getElementById('gantt-chart');
+  const timeMarkers = document.getElementById('time-markers');
+  const calculationsDiv = document.getElementById('calculations');
+
+  // Industrial app
+  const productionQueueDiv = document.getElementById('production-queue');
+  const completedSectionDiv = document.getElementById('completed-section');
+  const workstationDiv = document.getElementById('workstation');
+
+  // Info panel tabs
+  const tabs = document.querySelectorAll('.tab-button');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  /* === Utility Functions === */
+  function createProcessCircle(id) {
+    const div = document.createElement('div');
+    div.classList.add('process-circle', `proc${id}`);
+    div.textContent = id;
+    div.setAttribute('aria-label', `Process ${id}`);
+    div.style.left = '-60px'; // default offscreen
+    return div;
+  }
+
+  function createProdIcon(id) {
+    const div = document.createElement('div');
+    div.classList.add('prod-icon', `prod-${id}`);
+    div.setAttribute('aria-label', `Order ${id}`);
+    div.title = `Order ${id}`;
+    return div;
+  }
+
+  /* === Rendering Functions === */
+
+  /***
+   * Animate process arrivals
+   * Show processes sliding from left at their arrival time
+   */
+  function renderProcessArrival(sim) {
+    arrivalContainer.innerHTML = '';
+    const timelineWidth = arrivalContainer.clientWidth;
+
+    sim.processes.forEach(proc => {
+      // Position horizontally proportional by current time
+      // At arrivalTime: position: 0% from left → 10% margin left
+      // When time = proc.arrivalTime, process slides from outside left to 30px from left
+      // If time < arrivalTime, do not show
+      // If time >= arrivalTime, show process circle positioned near left
+
+      if (sim.time >= proc.arrivalTime) {
+        const elem = createProcessCircle(proc.id);
+        // For animation: left fixed 15px plus offset to simulate arrival movement
+
+        // Time since arrival:
+        const arrivedDuration = sim.time - proc.arrivalTime;
+        let leftPosPx = Math.min(60, arrivedDuration * 20 + 15);
+        elem.style.left = leftPosPx + 'px';
+        elem.style.top = '20px';
+        arrivalContainer.appendChild(elem);
+      }
+    });
+  }
+
+  /***
+   * Render ready queue horizontally
+   * Processes with status Ready or Running in order
+   */
+  function renderReadyQueue(sim) {
+    readyQueueContainer.innerHTML = '';
+
+    // Front process highlight with border if running
+    // Show ready queue processes.
+
+    // Prepare an array that includes currentProcess at front if any
+    // Ready queue (waiting) behind current process
+
+    let displayProcs = [];
+
+    if (sim.currentProcess) {
+      displayProcs.push({proc: sim.currentProcess, status: 'Running'});
+    }
+
+    sim.readyQueue.forEach(p => {
+      displayProcs.push({proc: p, status: 'Ready'});
+    });
+
+    displayProcs.forEach(({proc, status}) => {
+      const el = createProcessCircle(proc.id);
+      if (status === 'Running') {
+        el.classList.add('running');
+      } else {
+        el.classList.add('waiting');
+      }
+      el.style.position = 'relative';
+      el.style.left = '0';
+      readyQueueContainer.appendChild(el);
+    });
+  }
+
+  /***
+   * Render the CPU block
+   */
+  function renderCPU(sim) {
+    if (sim.currentProcess) {
+      cpuProcessDiv.textContent = sim.currentProcess.id;
+      cpuProcessDiv.className = `proc${sim.currentProcess.id}`;
+      cpuStatusDiv.textContent = 'CPU Status: Busy';
+      cpuStatusDiv.classList.remove('idle');
+      cpuContainer.classList.remove('idle');
+    } else {
+      cpuProcessDiv.textContent = '';
+      cpuStatusDiv.textContent = 'CPU Status: Idle';
+      cpuStatusDiv.classList.add('idle');
+      cpuContainer.classList.add('idle');
+    }
+  }
+
+  /***
+   * Render process status table
+   */
+  function renderProcessTable(sim) {
+    processTableBody.innerHTML = '';
+    for (const p of sim.processes) {
+      const tr = document.createElement('tr');
+
+      const tdId = document.createElement('td');
+      tdId.textContent = p.id;
+      tr.appendChild(tdId);
+
+      const tdAT = document.createElement('td');
+      tdAT.textContent = p.arrivalTime;
+      tr.appendChild(tdAT);
+
+      const tdBT = document.createElement('td');
+      tdBT.textContent = p.burstTime;
+      tr.appendChild(tdBT);
+
+      const tdCT = document.createElement('td');
+      tdCT.textContent = p.completionTime !== null ? p.completionTime : '-';
+      tr.appendChild(tdCT);
+
+      const tdWT = document.createElement('td');
+      tdWT.textContent = p.waitingTime !== null ? p.waitingTime : '-';
+      tr.appendChild(tdWT);
+
+      const tdTAT = document.createElement('td');
+      tdTAT.textContent = p.turnaroundTime !== null ? p.turnaroundTime : '-';
+      tr.appendChild(tdTAT);
+
+      const tdStatus = document.createElement('td');
+      let cls = '';
+      let stTxt = p.status;
+      switch (p.status) {
+        case 'Arrived': cls = 'status-arrived'; break;
+        case 'Ready': cls = 'status-ready'; break;
+        case 'Running': cls = 'status-running'; break;
+        case 'Completed': cls = 'status-completed'; break;
+        default: cls = '';
+      }
+      tdStatus.textContent = stTxt;
+      if(cls) tdStatus.classList.add(cls);
+      tr.appendChild(tdStatus);
+
+      processTableBody.appendChild(tr);
+    }
+  }
+
+  /***
+   * Render Gantt chart
+   */
+  function renderGanttChart(sim) {
+    const chartWidth = ganttChart.clientWidth;
+
+    // From the completedProcesses info, build blocks
+
+    // Blocks on gantt chart are proportional in width to burst times, 
+    // placed sequentially left to right total width
+    ganttChart.innerHTML = '';
+    timeMarkers.innerHTML = '';
+
+    if (sim.completedProcesses.length === 0 && sim.currentProcess === null) {
+      // Empty chart
+      return;
+    }
+
+    const allExecuted = [...sim.completedProcesses];
+    if (sim.currentProcess) {
+      allExecuted.push(sim.currentProcess);
+    }
+
+    // Total time span is from 0 to max completion time or current time
+    const endTime = sim.time > 0 ? sim.time : 0;
+
+    // The executed sequence is in completion order; FCFS means sequential without gaps
+
+    // Prepare sequence array with start/finish for each process, per FCFS
+    // Simulate process intervals for building gantt
+
+    // Because it's first come first served, no overlap, the order is by arrival time and finishing time.
+
+    // Respect animation showing current running process considering current time
+
+    // We'll build an array of executed time intervals:
+    let intervals = [];
+    let curTime = 0;
+    for (const p of sim.processes) {
+      // For processes not yet arrived or completed, do not add
+      if (p.completionTime === null) {
+        if (p.status === 'Running' && sim.currentProcess?.id === p.id) {
+          // Partial execute from start or previous completion
+          let executedTime = sim.time - curTime; // current time slice
+          if (executedTime > p.burstTime) executedTime = p.burstTime;
+          intervals.push({
+            id: p.id,
+            start: curTime,
+            finish: curTime + executedTime,
+            burst: p.burstTime
+          });
+          curTime += executedTime;
+          break;
+        } else {
+          break;
+        }
+      } else {
+        intervals.push({
+          id: p.id,
+          start: curTime,
+          finish: p.completionTime,
+          burst: p.burstTime
+        });
+        curTime = p.completionTime;
+      }
+    }
+
+    // Calculate total length
+    const totalLength = intervals.length > 0 ? intervals[intervals.length-1].finish : 0;
+    if (totalLength === 0) {
+      return;
+    }
+
+    // Create blocks scaled
+    for (const interval of intervals) {
+      const block = document.createElement('div');
+      block.classList.add('gantt-block', `proc${interval.id}`);
+      block.textContent = interval.id;
+      // Width proportion - fill container width proportional to burst time/time length
+      let widthPercent = (interval.finish - interval.start) / totalLength * 100;
+      block.style.flexBasis = `${widthPercent}%`;
+
+      // Highlight current running proc by glow if currentTime within last interval
+      if (sim.currentProcess?.id === interval.id && sim.time <= interval.finish) {
+        block.classList.add('current');
+      }
+
+      ganttChart.appendChild(block);
+    }
+
+    // Time markers: generate start and finish times of each interval
+
+    // Marker distribution along gantt chart width
+    timeMarkers.style.width = '100%';
+    timeMarkers.style.display = 'flex';
+    timeMarkers.style.justifyContent = 'space-between';
+
+    intervals.forEach((interval, i) => {
+      if (i === 0) {
+        const startMark = document.createElement('div');
+        startMark.style.flexBasis = 'fit-content';
+        startMark.textContent = interval.start;
+        timeMarkers.appendChild(startMark);
+      }
+      const finishMark = document.createElement('div');
+      finishMark.style.flexBasis = 'fit-content';
+      finishMark.textContent = interval.finish;
+      timeMarkers.appendChild(finishMark);
+    });
+  }
+
+  /***
+   * Render final calculations below gantt chart when all complete
+   */
+  function renderCalculations(sim) {
+    if (sim.completedProcesses.length < sim.processes.length) {
+      calculationsDiv.innerHTML = '';
+      return;
+    }
+    // Calculate averages
+    const n = sim.processes.length;
+    let totalWT = 0;
+    let totalTAT = 0;
+
+    for (const p of sim.processes) {
+      totalWT += p.waitingTime;
+      totalTAT += p.turnaroundTime;
+    }
+    const avgWT = (totalWT / n).toFixed(2);
+    const avgTAT = (totalTAT / n).toFixed(2);
+
+    calculationsDiv.innerHTML = `
+      <p>Average Waiting Time: <span class="highlight-green">${avgWT} time units</span></p>
+      <p>Average Turnaround Time: <span class="highlight-green">${avgTAT} time units</span></p>
+    `;
+  }
+
+  /* === Industrial Application Animation === */
+  /* Show three orders arriving and processed similarly */
+
+  function renderIndustrialApp(sim) {
+    const state = sim.industrialState;
+
+    // 1) Render Production Queue
+    productionQueueDiv.innerHTML = '';
+    for (const order of state.queue) {
+      const prodIcon = createProdIcon(order.id);
+      productionQueueDiv.appendChild(prodIcon);
+    }
+
+    // 2) Render Current Order in Workstation
+    if (state.currentOrder) {
+      workstationDiv.textContent = `Order ${state.currentOrder.id} Processing...`;
+      // Style workstation dynamically by order color
+      workstationDiv.style.color = (() => {
+        switch(state.currentOrder.id) {
+          case 'A': return '#00ffba';
+          case 'B': return '#2d92ff';
+          case 'C': return '#ffae00';
+          default: return '#ccc';
+        }
+      })();
+    } else {
+      workstationDiv.textContent = 'Workstation Idle';
+      workstationDiv.style.color = '#666';
+    }
+
+    // 3) Render Completed Orders
+    completedSectionDiv.innerHTML = 'Completed: ';
+    for (const order of state.doneOrders) {
+      const prodIcon = createProdIcon(order.id);
+      completedSectionDiv.appendChild(prodIcon);
+    }
+  }
+
+  /* === UI Control Helpers === */
+  function setButtonsOnStart() {
+    btnStart.disabled = true;
+    btnPause.disabled = false;
+    btnResume.disabled = true;
+    btnStep.disabled = false;
+    btnBack.disabled = sim.stateHistory.length <= 1;
+    btnReset.disabled = false;
+    btnReplay.disabled = false;
+  }
+  function setButtonsOnPause() {
+    btnStart.disabled = true;
+    btnPause.disabled = true;
+    btnResume.disabled = false;
+    btnStep.disabled = false;
+    btnBack.disabled = sim.historyPointer > 0;
+    btnReset.disabled = false;
+    btnReplay.disabled = false;
+  }
+  function setButtonsOnResume() {
+    btnStart.disabled = true;
+    btnPause.disabled = false;
+    btnResume.disabled = true;
+    btnStep.disabled = true;
+    btnBack.disabled = true;
+    btnReset.disabled = false;
+    btnReplay.disabled = false;
+  }
+  function setButtonsOnReset() {
+    btnStart.disabled = false;
+    btnPause.disabled = true;
+    btnResume.disabled = true;
+    btnStep.disabled = true;
+    btnBack.disabled = true;
+    btnReset.disabled = true;
+    btnReplay.disabled = true;
+  }
+
+  /* === Tab interaction === */
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Deactivate all
+      tabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+        const id = t.id.replace('tab-', 'content-');
+        const content = document.getElementById(id);
+        if(content) content.hidden = true;
+        t.tabIndex = -1;
+      });
+      // Activate clicked
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      const contentId = tab.id.replace('tab-', 'content-');
+      const contentActive = document.getElementById(contentId);
+      if(contentActive) contentActive.hidden = false;
+      tab.tabIndex = 0;
+      tab.focus();
+    });
+  });
+
+  /* === Clock display update */
+  function updateClock(time) {
+    simClock.textContent = `Time: ${time}`;
+  }
+
+  /* === Instantiate Simulation === */
+  const sim = new Simulation();
+
+  /* === Link Simulation to UI === */
+  sim.onStateChange = (sim) => {
+    updateClock(sim.time);
+    renderProcessArrival(sim);
+    renderReadyQueue(sim);
+    renderCPU(sim);
+    renderProcessTable(sim);
+    renderGanttChart(sim);
+    renderCalculations(sim);
+    renderIndustrialApp(sim);
+
+    // Enable/disable back button depending on historyPointer
+    btnBack.disabled = sim.historyPointer <= 0;
+  };
+
+  sim.onSimulationEnd = () => {
+    setButtonsOnPause();
+  };
+
+  /* === Button Handlers === */
+  btnStart.addEventListener('click', () => {
+    if (!sim.isRunning) {
+      setButtonsOnStart();
+      sim.start();
+    }
+  });
+  btnPause.addEventListener('click', () => {
+    sim.pause();
+    setButtonsOnPause();
+  });
+  btnResume.addEventListener('click', () => {
+    sim.resume();
+    setButtonsOnResume();
+  });
+  btnStep.addEventListener('click', () => {
+    if (!sim.isRunning) {
+      const result = sim.stepForward();
+      sim.onStateChange(sim);
+      setButtonsOnPause();
+    }
+  });
+  btnBack.addEventListener('click', () => {
+    if (!sim.isRunning) {
+      const result = sim.stepBack();
+      if (result) {
+        sim.onStateChange(sim);
+        setButtonsOnPause();
+      }
+    }
+  });
+  btnReset.addEventListener('click', () => {
+    sim.resetSimulation();
+    setButtonsOnReset();
+  });
+  btnReplay.addEventListener('click', () => {
+    sim.replay();
+    setButtonsOnStart();
+  });
+  speedSelector.addEventListener('change', () => {
+    const val = speedSelector.value;
+    sim.speed = sim.speedMap[val] || sim.speedMap.normal;
+  });
+
+  /* === Initial UI Setup === */
+  setButtonsOnReset();
+  sim.onStateChange(sim);
+
+  /* === Accessibility enhancements: keyboard tab navigation focus styles === */
+  document.body.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      document.body.classList.add('user-is-tabbing');
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
